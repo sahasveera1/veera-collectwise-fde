@@ -1,0 +1,7 @@
+node_modules/
+data/*.db
+data/*.db-journal
+*.rejects.csv
+.vercel
+.env
+.DS_Store

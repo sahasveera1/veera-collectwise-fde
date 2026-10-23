@@ -1,0 +1,13 @@
+account_number,debtor_name,phone_number,balance,status,client_name
+ACC-100001,Maria Gonzalez,(415) 555-0132,1250.00,Active,Summit Medical Group
+ACC-100002,James Carter,415-555-0187,"$3,480.75",Active,Riverside Auto Finance
+ACC-100003,Priya Patel,+1 212 555 0144,642.10,active,Summit Medical Group
+ACC-100004,Daniel Kim,6465550199,0.00,Paid,Harbor Credit Union
+ACC-100005,Aisha Bello,1-718-555-0123,15000,Active,Riverside Auto Finance
+ACC-100006,Tom Whitaker,555-0100,980.40,Closed,Harbor Credit Union
+ACC-100007,Lena Novak,(312) 555-0166,2210.99,DISPUTED,Summit Medical Group
+,No Account Person,(312) 555-0170,500.00,Active,Summit Medical Group
+ACC-100008,Robert Hughes,(312) 555-0181,N/A,Active,Harbor Credit Union
+ACC-100009,Grace Liu,,410.00,Active,Riverside Auto Finance
+ACC-100002,James Carter,415-555-0187,3100.00,Active,Riverside Auto Finance
+00012345,Samuel Ortiz,(305) 555-0102,775.25,Active,Coastal Utilities
