@@ -91,6 +91,13 @@ Rejected rows are written to `<file>.rejects.csv` with the line number and reaso
 
 Lookups ignore case and surrounding whitespace (`acc-100001` matches `ACC-100001`). `GET /health` returns `{"ok":true}`.
 
+**For AI-agent tool calls:** `POST /accounts/lookup` with a JSON body `{"account_number": "..."}`, or Retell's envelope `{"args": {"account_number": "..."}}`. It returns the same responses as the GET endpoints. It exists because Retell's GET custom functions can't send LLM-filled arguments (see [Retell agent](#retell-agent)).
+
+```bash
+curl -X POST https://veera-collectwise-fde.vercel.app/accounts/lookup \
+  -H 'content-type: application/json' -d '{"account_number":"ACC-100010"}'
+```
+
 **Auth:** set the `API_KEY` env var to require an `x-api-key` header. It's off in the public demo so reviewers can call it freely. In production it should be on, since the endpoint returns PII.
 
 ## Deployment (Vercel)
@@ -107,6 +114,49 @@ Vercel functions have a read-only, non-persistent filesystem, so the database ca
 To deploy your own copy: import the repo at vercel.com/new (Framework Preset: **Other**, no other settings), or run `npx vercel --prod`. Use the project's production domain. Per-deployment URLs (`<project>-<hash>-<team>.vercel.app`) are behind Vercel Authentication by default.
 
 **Production next step:** uploads that don't need a deploy. Swap SQLite for hosted Postgres (e.g. Neon through the Vercel Marketplace) and point the same ingest script at it, triggered by an SFTP/S3 drop. The schema and validation code stay the same.
+
+## Retell agent
+
+[`retell/atlas-recovery-agent.json`](retell/atlas-recovery-agent.json) is the exported Conversation Flow agent ("Atlas Recovery Agent"). To use it, go to Retell, then **Agents**, then **Import**.
+
+```
+Greeting ─yes─► Verify SSN ─1234─► lookup_account (this API) ─Active─► Negotiation ─agreed─► End
+   │                │ 2 wrong                │ not found / not Active   │ declined ─► End
+   no               ▼                        ▼                          │ dispute / human ─► Transfer
+   ▼             Transfer                 Transfer
+Ask for John ─available─► Verify SSN
+   ├─ unavailable ─► Take message (no debt disclosed) ─► End
+   └─ wrong number ─► End
+```
+
+- **Live account data:** after verification, a function node calls `POST /accounts/lookup` with `{{account_number}}`. The response's `balance` and `status` become `{{balance}}` / `{{account_status}}`, so the agent quotes the balance from the database instead of a hard-coded figure. `account_number` is a per-call dynamic variable; it defaults to `ACC-100010`, the John Doe test account in the sample CSV.
+- **Negotiation ladder:**
+  1. full payment
+  2. 3-month plan
+  3. the caller's affordable monthly amount, capped at 24 months
+  4. a 90% settlement, then an 80% settlement
+
+  The 24-month and 80% limits are restated as hard limits. Payments that don't divide evenly adjust the final installment so the plan totals exactly the balance.
+- **Compliance guardrails** (in the global prompt):
+  - no mention of the debt to anyone but the verified debtor (FDCPA third-party disclosure);
+  - the "attempt to collect a debt" disclosure is said after verification;
+  - no threats;
+  - a dispute, a lawyer mention, or a request for a human leads to a transfer.
+- **Verification:** two attempts; digits offered as a question count as an attempt; the expected digits are never revealed.
+- **Failure handling:** if the lookup fails, the account is missing, or the account isn't Active, the call transfers instead of quoting a number. If the transfer fails, the agent ends gracefully with a call-back promise.
+- `transfer_number` is a placeholder (`+14155550100`); set it to Atlas's live-agent line.
+
+**Tested** in Retell's LLM test chat:
+
+| Scenario | Result |
+|---|---|
+| Happy path down the whole ladder | Held the 80% floor against a $1,500 counter, closed at $2,000 |
+| 3-month plan | $833.33 / $833.33 / $833.34 |
+| Wrong SSN twice | Transferred |
+| SSN guess phrased as a question | Counted as an attempt; no hints given |
+| Spouse asks "does he owe you money?" | Deflected; left a neutral message |
+| Wrong number | Ended politely |
+| Unknown account | 404, then transfer, with no balance stated |
 
 ## Assumptions and notes
 
@@ -128,4 +178,5 @@ db/schema.sql         schema
 data/atlas_inventory.csv  sample inventory (deployed data)
 test/                 node:test suite
 docs/                 email to Atlas's COO
+retell/               exported Retell AI agent (JSON)
 ```
