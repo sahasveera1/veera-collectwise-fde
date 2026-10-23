@@ -93,6 +93,25 @@ test('leading zeros are preserved', async () => {
   assert.equal((await res.json()).debtor_name, 'Zed');
 });
 
+test('POST /accounts/lookup accepts root args and the Retell envelope', async () => {
+  const post = (body) => fetch(`${baseUrl}/accounts/lookup`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+
+  const root = await post({ account_number: 'a-1' });
+  assert.equal(root.status, 200);
+  assert.equal((await root.json()).account_number, 'A-1');
+
+  const envelope = await post({ name: 'lookup_account', call: {}, args: { account_number: '007' } });
+  assert.equal(envelope.status, 200);
+  assert.equal((await envelope.json()).debtor_name, 'Zed');
+
+  assert.equal((await post({})).status, 400);
+  assert.equal((await post({ account_number: 'NOPE-1' })).status, 404);
+});
+
 test('unknown account returns 404, bad input returns 400', async () => {
   const missing = await fetch(`${baseUrl}/accounts/NOPE-1`);
   assert.equal(missing.status, 404);

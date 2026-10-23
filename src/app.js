@@ -52,6 +52,11 @@ export function createApp({ db = openForRead(), apiKey = process.env.API_KEY } =
   app.get('/accounts/:accountNumber', (req, res) => lookup(req.params.accountNumber, res));
   app.get('/accounts', (req, res) => lookup(req.query.account_number, res));
 
+  // For AI-agent tool calls (Retell custom functions POST a JSON body). Accepts the
+  // account number at the root ({ account_number }) or in Retell's envelope ({ args: { account_number } }).
+  app.post('/accounts/lookup', express.json(), (req, res) =>
+    lookup(req.body?.account_number ?? req.body?.args?.account_number, res));
+
   app.use((req, res) => sendError(res, 404, 'not_found', `No route for ${req.method} ${req.path}.`));
   app.use((err, req, res, next) => {
     console.error(err);

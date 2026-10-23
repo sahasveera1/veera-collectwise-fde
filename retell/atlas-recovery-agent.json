@@ -54,8 +54,8 @@
         "type": "custom",
         "name": "lookup_account",
         "description": "Look up the debtor's account in the Atlas Recovery inventory by account number. Returns account_number, debtor_name, phone_number, balance (US dollars), status (e.g. Active, Closed, Paid, Disputed) and client_name. Returns a 404 error if the account does not exist.",
-        "url": "https://veera-collectwise-fde.vercel.app/accounts",
-        "method": "GET",
+        "url": "https://veera-collectwise-fde.vercel.app/accounts/lookup",
+        "method": "POST",
         "parameters": {
           "type": "object",
           "properties": {
@@ -64,7 +64,9 @@
               "description": "The account number to look up. Use the value of {{account_number}} exactly."
             }
           },
-          "required": ["account_number"]
+          "required": [
+            "account_number"
+          ]
         },
         "response_variables": {
           "balance": "balance",
@@ -73,7 +75,8 @@
         },
         "speak_during_execution": false,
         "speak_after_execution": false,
-        "timeout_ms": 10000
+        "timeout_ms": 10000,
+        "args_at_root": true
       }
     ],
     "nodes": [
@@ -83,7 +86,10 @@
         "type": "conversation",
         "start_speaker": "agent",
         "skippable": false,
-        "display_position": { "x": 100, "y": 400 },
+        "display_position": {
+          "x": 100,
+          "y": 400
+        },
         "instruction": {
           "type": "static_text",
           "text": "Hello, this is Nancy from Alpha Bank. Is this John Doe?"
@@ -112,7 +118,10 @@
         "name": "Ask for John Doe",
         "type": "conversation",
         "skippable": false,
-        "display_position": { "x": 500, "y": 700 },
+        "display_position": {
+          "x": 500,
+          "y": 700
+        },
         "instruction": {
           "type": "prompt",
           "text": "Say: \"I'm trying to reach John Doe. May I speak with them?\" Do not say why you are calling beyond \"a personal business matter\"."
@@ -149,7 +158,10 @@
         "name": "Take a Message",
         "type": "conversation",
         "skippable": false,
-        "display_position": { "x": 900, "y": 700 },
+        "display_position": {
+          "x": 900,
+          "y": 700
+        },
         "instruction": {
           "type": "prompt",
           "text": "Ask: \"Can you take a message?\" If they agree, say: \"Please let John Doe know that Nancy from Alpha Bank called about a personal business matter, and ask him to call us back at his earliest convenience. Thank you.\" Do NOT mention the debt, balance, or collections. If they decline, thank them politely."
@@ -170,7 +182,10 @@
         "name": "Identity Verification",
         "type": "conversation",
         "skippable": false,
-        "display_position": { "x": 500, "y": 300 },
+        "display_position": {
+          "x": 500,
+          "y": 300
+        },
         "instruction": {
           "type": "prompt",
           "text": "Say: \"Thanks John Doe. Can you please confirm the last 4 digits of your social security number?\"\n\nThe correct last 4 digits are 1234. This is confidential: never say, hint at, or read back these digits.\n- If the caller's answer is unclear or incomplete, ask them to repeat it.\n- If the caller gives the wrong digits, allow ONE more attempt: \"I'm sorry, that doesn't match our records. Could you please try once more?\"\n- Do not discuss the account until verification succeeds."
@@ -202,7 +217,10 @@
         "tool_type": "local",
         "wait_for_result": true,
         "speak_during_execution": true,
-        "display_position": { "x": 900, "y": 300 },
+        "display_position": {
+          "x": 900,
+          "y": 300
+        },
         "instruction": {
           "type": "static_text",
           "text": "Thank you, you're verified. One moment while I pull up your account."
@@ -231,7 +249,10 @@
         "name": "Payment Negotiation",
         "type": "conversation",
         "skippable": false,
-        "display_position": { "x": 1300, "y": 300 },
+        "display_position": {
+          "x": 1300,
+          "y": 300
+        },
         "instruction": {
           "type": "prompt",
           "text": "The verified account balance is {{balance}} US dollars (call this B). Use this exact figure; never invent or change it.\n\nFirst say: \"This is an attempt to collect a debt, and any information obtained will be used for that purpose.\" Then tell John the amount he owes and ask if he can pay the full balance today.\n\nNegotiate in this order, moving to the next step only when the caller declines the current one:\n1. Full payment of B.\n2. A 3-month payment plan: B divided by 3 per month (round to the cent).\n3. Ask what monthly amount he can afford. Number of months = B divided by that amount, rounded up. If it is 24 months or fewer, accept it. If it would take more than 24 months, explain the maximum plan length is 24 months and offer B divided by 24 per month.\n4. A one-time settlement: first offer 90% of B, and if declined, 80% of B. Never go below 80% of B. Settlements are a single lump-sum payment, not combined with a payment plan.\n\nHard limits: never offer or accept a plan longer than 24 months; never offer or accept a settlement below 80% of B. If the caller proposes something outside these limits, politely explain you can't do that and restate your best available option.\n\nBe empathetic. Do the math carefully and state amounts clearly. When the caller agrees to an option, restate the exact terms (amount, frequency, number of payments, and start date if given) and ask them to confirm."
@@ -268,7 +289,10 @@
         "name": "Transfer (Not Verified)",
         "type": "transfer_call",
         "speak_during_execution": true,
-        "display_position": { "x": 900, "y": 0 },
+        "display_position": {
+          "x": 900,
+          "y": 0
+        },
         "instruction": {
           "type": "static_text",
           "text": "I'm sorry, I wasn't able to verify your identity. I'll transfer you to a live agent who can help you now."
@@ -295,7 +319,10 @@
         "name": "Transfer to Live Agent",
         "type": "transfer_call",
         "speak_during_execution": true,
-        "display_position": { "x": 1700, "y": 0 },
+        "display_position": {
+          "x": 1700,
+          "y": 0
+        },
         "instruction": {
           "type": "prompt",
           "text": "Briefly tell the caller you're transferring them to a live agent who can help further. If the account lookup failed or the account isn't active, don't state a balance."
@@ -322,7 +349,10 @@
         "name": "End: Agreement",
         "type": "end",
         "speak_during_execution": true,
-        "display_position": { "x": 1700, "y": 300 },
+        "display_position": {
+          "x": 1700,
+          "y": 300
+        },
         "instruction": {
           "type": "prompt",
           "text": "Thank John for working this out, briefly restate the agreed terms, tell him he'll receive a written confirmation from Alpha Bank, and say goodbye."
@@ -333,7 +363,10 @@
         "name": "End: No Agreement",
         "type": "end",
         "speak_during_execution": true,
-        "display_position": { "x": 1700, "y": 600 },
+        "display_position": {
+          "x": 1700,
+          "y": 600
+        },
         "instruction": {
           "type": "prompt",
           "text": "Politely thank John for his time, let him know he can call Alpha Bank back any time to set up a payment, and say goodbye."
@@ -344,7 +377,10 @@
         "name": "End: Message",
         "type": "end",
         "speak_during_execution": true,
-        "display_position": { "x": 1300, "y": 700 },
+        "display_position": {
+          "x": 1300,
+          "y": 700
+        },
         "instruction": {
           "type": "static_text",
           "text": "Thank you so much for your help. Have a great day. Goodbye."
@@ -355,7 +391,10 @@
         "name": "End: Wrong Number",
         "type": "end",
         "speak_during_execution": true,
-        "display_position": { "x": 900, "y": 1000 },
+        "display_position": {
+          "x": 900,
+          "y": 1000
+        },
         "instruction": {
           "type": "static_text",
           "text": "I'm sorry for the inconvenience. I must have the wrong number. Have a great day. Goodbye."
@@ -366,7 +405,10 @@
         "name": "End: Transfer Failed",
         "type": "end",
         "speak_during_execution": true,
-        "display_position": { "x": 2100, "y": 0 },
+        "display_position": {
+          "x": 2100,
+          "y": 0
+        },
         "instruction": {
           "type": "static_text",
           "text": "I'm sorry, I wasn't able to connect you to an agent right now. Someone from Alpha Bank will call you back shortly. Goodbye."
@@ -381,7 +423,10 @@
       "filter_score": 0.6,
       "top_k": 3
     },
-    "begin_tag_display_position": { "x": -100, "y": 400 },
+    "begin_tag_display_position": {
+      "x": -100,
+      "y": 400
+    },
     "is_published": false,
     "is_transfer_cf": false
   }
