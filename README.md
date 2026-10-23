@@ -18,6 +18,8 @@ curl https://veera-collectwise-fde.vercel.app/accounts/ACC-999   # 404
 
 ## Quick start (local)
 
+Requires **Node.js 22.13 or newer** (24 recommended), the first versions where the built-in `node:sqlite` module needs no flag. Check with `node -v`.
+
 ```bash
 npm install
 npm run ingest -- path/to/atlas_inventory.csv   # defaults to ./atlas_inventory.csv
@@ -27,6 +29,8 @@ npm test
 ```
 
 A sample file with deliberately messy rows is at [`data/atlas_inventory.csv`](data/atlas_inventory.csv).
+
+**Testing with your own CSV:** run the steps above locally. That's the full ingest-then-lookup path. The public URL serves the database built from `data/atlas_inventory.csv` at deploy time, so a local ingest doesn't change it. To put your file behind the public URL, replace `data/atlas_inventory.csv` and push (or send it to me), and Vercel redeploys in about a minute. See [Deployment](#deployment-vercel).
 
 The database is written to `data/atlas.db` (override with `DB_PATH`). The schema is in [`db/schema.sql`](db/schema.sql) and is applied automatically by the ingest script.
 
