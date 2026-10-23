@@ -1,0 +1,388 @@
+{
+  "agent_id": "",
+  "channel": "voice",
+  "agent_name": "Atlas Recovery Agent",
+  "response_engine": {
+    "conversation_flow_id": "",
+    "type": "conversation-flow",
+    "version": 0
+  },
+  "language": "en-US",
+  "data_storage_setting": "everything",
+  "opt_in_signed_url": false,
+  "version": 0,
+  "assigned_tags": [],
+  "is_published": false,
+  "post_call_analysis_model": "gpt-5.6-terra",
+  "pii_config": {
+    "categories": [],
+    "mode": "post_call"
+  },
+  "handbook_config": {
+    "ai_disclosure": true,
+    "default_personality": true
+  },
+  "timezone": "America/Los_Angeles",
+  "voice_id": "retell-Cimo",
+  "max_call_duration_ms": 1800000,
+  "interruption_sensitivity": 0.9,
+  "voicemail_option": {
+    "action": {
+      "type": "hangup"
+    }
+  },
+  "allow_user_dtmf": true,
+  "user_dtmf_options": {},
+  "conversationFlow": {
+    "conversation_flow_id": "",
+    "version": 0,
+    "model_config": {
+      "type": "cascading",
+      "primary": {
+        "model": "gpt-5.6-terra",
+        "tier": "standard"
+      }
+    },
+    "global_prompt": "You are Nancy, a polite, calm and professional collections representative calling on behalf of Alpha Bank. You are calling John Doe about his account.\n\nRules that apply at every step:\n- Never discuss the debt, the balance, or the reason for the call with anyone other than John Doe after he has passed identity verification. To anyone else, say only that you are calling from Alpha Bank about a personal business matter.\n- Never say, hint at, or confirm the expected SSN digits. Never read back digits the caller gives you.\n- Be respectful and never threatening. Do not make promises or threats you cannot back up (no legal action, credit reporting, or wage garnishment claims).\n- If the caller says they dispute the debt, asks for a human, or says they have a lawyer, offer to transfer them to a live agent.\n- If the caller asks you to stop calling, acknowledge it politely and end the call.\n- Keep responses short and conversational, one question at a time. Say money amounts naturally, e.g. \"two thousand five hundred dollars\".\n\nCall details:\n- Account number: {{account_number}}",
+    "default_dynamic_variables": {
+      "account_number": "ACC-100010",
+      "transfer_number": "+14155550100"
+    },
+    "tools": [
+      {
+        "tool_id": "tool_lookup_account",
+        "type": "custom",
+        "name": "lookup_account",
+        "description": "Look up the debtor's account in the Atlas Recovery inventory by account number. Returns account_number, debtor_name, phone_number, balance (US dollars), status (e.g. Active, Closed, Paid, Disputed) and client_name. Returns a 404 error if the account does not exist.",
+        "url": "https://veera-collectwise-fde.vercel.app/accounts",
+        "method": "GET",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "account_number": {
+              "type": "string",
+              "description": "The account number to look up. Use the value of {{account_number}} exactly."
+            }
+          },
+          "required": ["account_number"]
+        },
+        "response_variables": {
+          "balance": "balance",
+          "account_status": "status",
+          "client_name": "client_name"
+        },
+        "speak_during_execution": false,
+        "speak_after_execution": false,
+        "timeout_ms": 10000
+      }
+    ],
+    "nodes": [
+      {
+        "id": "greeting",
+        "name": "Greeting",
+        "type": "conversation",
+        "start_speaker": "agent",
+        "skippable": false,
+        "display_position": { "x": 100, "y": 400 },
+        "instruction": {
+          "type": "static_text",
+          "text": "Hello, this is Nancy from Alpha Bank. Is this John Doe?"
+        },
+        "edges": [
+          {
+            "id": "edge-greeting-yes",
+            "destination_node_id": "verify_identity",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "The person confirms they are John Doe"
+            }
+          },
+          {
+            "id": "edge-greeting-no",
+            "destination_node_id": "ask_for_john",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "The person says they are not John Doe, or someone else answered"
+            }
+          }
+        ]
+      },
+      {
+        "id": "ask_for_john",
+        "name": "Ask for John Doe",
+        "type": "conversation",
+        "skippable": false,
+        "display_position": { "x": 500, "y": 700 },
+        "instruction": {
+          "type": "prompt",
+          "text": "Say: \"I'm trying to reach John Doe. May I speak with them?\" Do not say why you are calling beyond \"a personal business matter\"."
+        },
+        "edges": [
+          {
+            "id": "edge-ask-john-available",
+            "destination_node_id": "verify_identity",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "John Doe comes to the phone, or the person now says they are John Doe"
+            }
+          },
+          {
+            "id": "edge-ask-john-unavailable",
+            "destination_node_id": "take_message",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "John Doe lives here or is known to the person but is not available right now"
+            }
+          },
+          {
+            "id": "edge-ask-john-wrong-number",
+            "destination_node_id": "end_wrong_number",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "The person does not know John Doe, or says this is a wrong number"
+            }
+          }
+        ]
+      },
+      {
+        "id": "take_message",
+        "name": "Take a Message",
+        "type": "conversation",
+        "skippable": false,
+        "display_position": { "x": 900, "y": 700 },
+        "instruction": {
+          "type": "prompt",
+          "text": "Ask: \"Can you take a message?\" If they agree, say: \"Please let John Doe know that Nancy from Alpha Bank called about a personal business matter, and ask him to call us back at his earliest convenience. Thank you.\" Do NOT mention the debt, balance, or collections. If they decline, thank them politely."
+        },
+        "edges": [
+          {
+            "id": "edge-message-done",
+            "destination_node_id": "end_message_left",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "The message has been given, or the person declined to take a message"
+            }
+          }
+        ]
+      },
+      {
+        "id": "verify_identity",
+        "name": "Identity Verification",
+        "type": "conversation",
+        "skippable": false,
+        "display_position": { "x": 500, "y": 300 },
+        "instruction": {
+          "type": "prompt",
+          "text": "Say: \"Thanks John Doe. Can you please confirm the last 4 digits of your social security number?\"\n\nThe correct last 4 digits are 1234. This is confidential: never say, hint at, or read back these digits.\n- If the caller's answer is unclear or incomplete, ask them to repeat it.\n- If the caller gives the wrong digits, allow ONE more attempt: \"I'm sorry, that doesn't match our records. Could you please try once more?\"\n- Do not discuss the account until verification succeeds."
+        },
+        "edges": [
+          {
+            "id": "edge-verify-ok",
+            "destination_node_id": "lookup_account",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "The caller stated the last 4 SSN digits as exactly 1 2 3 4"
+            }
+          },
+          {
+            "id": "edge-verify-failed",
+            "destination_node_id": "transfer_unverified",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "The caller gave incorrect digits twice, refuses to provide them, or says they don't know them"
+            }
+          }
+        ]
+      },
+      {
+        "id": "lookup_account",
+        "name": "Look Up Account",
+        "type": "function",
+        "tool_id": "tool_lookup_account",
+        "tool_type": "local",
+        "wait_for_result": true,
+        "speak_during_execution": true,
+        "display_position": { "x": 900, "y": 300 },
+        "instruction": {
+          "type": "static_text",
+          "text": "Thank you, you're verified. One moment while I pull up your account."
+        },
+        "edges": [
+          {
+            "id": "edge-lookup-active",
+            "destination_node_id": "payment_negotiation",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "The lookup succeeded and the account status is Active with a balance greater than zero"
+            }
+          }
+        ],
+        "else_edge": {
+          "id": "edge-lookup-else",
+          "destination_node_id": "transfer_agent",
+          "transition_condition": {
+            "type": "prompt",
+            "prompt": "Else"
+          }
+        }
+      },
+      {
+        "id": "payment_negotiation",
+        "name": "Payment Negotiation",
+        "type": "conversation",
+        "skippable": false,
+        "display_position": { "x": 1300, "y": 300 },
+        "instruction": {
+          "type": "prompt",
+          "text": "The verified account balance is {{balance}} US dollars (call this B). Use this exact figure; never invent or change it.\n\nFirst say: \"This is an attempt to collect a debt, and any information obtained will be used for that purpose.\" Then tell John the amount he owes and ask if he can pay the full balance today.\n\nNegotiate in this order, moving to the next step only when the caller declines the current one:\n1. Full payment of B.\n2. A 3-month payment plan: B divided by 3 per month (round to the cent).\n3. Ask what monthly amount he can afford. Number of months = B divided by that amount, rounded up. If it is 24 months or fewer, accept it. If it would take more than 24 months, explain the maximum plan length is 24 months and offer B divided by 24 per month.\n4. A one-time settlement: first offer 90% of B, and if declined, 80% of B. Never go below 80% of B. Settlements are a single lump-sum payment, not combined with a payment plan.\n\nHard limits: never offer or accept a plan longer than 24 months; never offer or accept a settlement below 80% of B. If the caller proposes something outside these limits, politely explain you can't do that and restate your best available option.\n\nBe empathetic. Do the math carefully and state amounts clearly. When the caller agrees to an option, restate the exact terms (amount, frequency, number of payments, and start date if given) and ask them to confirm."
+        },
+        "edges": [
+          {
+            "id": "edge-negotiation-agreed",
+            "destination_node_id": "end_agreement",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "The caller explicitly confirmed agreement to full payment, a payment plan of 24 months or less, or a settlement of at least 80% of the balance"
+            }
+          },
+          {
+            "id": "edge-negotiation-human",
+            "destination_node_id": "transfer_agent",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "The caller disputes the debt, asks for a human, mentions a lawyer, or describes a hardship you cannot resolve"
+            }
+          },
+          {
+            "id": "edge-negotiation-declined",
+            "destination_node_id": "end_no_agreement",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "The caller has declined every option including the 80% settlement, or asks to end the call"
+            }
+          }
+        ]
+      },
+      {
+        "id": "transfer_unverified",
+        "name": "Transfer (Not Verified)",
+        "type": "transfer_call",
+        "speak_during_execution": true,
+        "display_position": { "x": 900, "y": 0 },
+        "instruction": {
+          "type": "static_text",
+          "text": "I'm sorry, I wasn't able to verify your identity. I'll transfer you to a live agent who can help you now."
+        },
+        "transfer_destination": {
+          "type": "predefined",
+          "number": "{{transfer_number}}"
+        },
+        "transfer_option": {
+          "type": "cold_transfer",
+          "cold_transfer_mode": "sip_invite"
+        },
+        "edge": {
+          "id": "edge-transfer-unverified-failed",
+          "destination_node_id": "end_transfer_failed",
+          "transition_condition": {
+            "type": "prompt",
+            "prompt": "Transfer failed"
+          }
+        }
+      },
+      {
+        "id": "transfer_agent",
+        "name": "Transfer to Live Agent",
+        "type": "transfer_call",
+        "speak_during_execution": true,
+        "display_position": { "x": 1700, "y": 0 },
+        "instruction": {
+          "type": "prompt",
+          "text": "Briefly tell the caller you're transferring them to a live agent who can help further. If the account lookup failed or the account isn't active, don't state a balance."
+        },
+        "transfer_destination": {
+          "type": "predefined",
+          "number": "{{transfer_number}}"
+        },
+        "transfer_option": {
+          "type": "cold_transfer",
+          "cold_transfer_mode": "sip_invite"
+        },
+        "edge": {
+          "id": "edge-transfer-agent-failed",
+          "destination_node_id": "end_transfer_failed",
+          "transition_condition": {
+            "type": "prompt",
+            "prompt": "Transfer failed"
+          }
+        }
+      },
+      {
+        "id": "end_agreement",
+        "name": "End: Agreement",
+        "type": "end",
+        "speak_during_execution": true,
+        "display_position": { "x": 1700, "y": 300 },
+        "instruction": {
+          "type": "prompt",
+          "text": "Thank John for working this out, briefly restate the agreed terms, tell him he'll receive a written confirmation from Alpha Bank, and say goodbye."
+        }
+      },
+      {
+        "id": "end_no_agreement",
+        "name": "End: No Agreement",
+        "type": "end",
+        "speak_during_execution": true,
+        "display_position": { "x": 1700, "y": 600 },
+        "instruction": {
+          "type": "prompt",
+          "text": "Politely thank John for his time, let him know he can call Alpha Bank back any time to set up a payment, and say goodbye."
+        }
+      },
+      {
+        "id": "end_message_left",
+        "name": "End: Message",
+        "type": "end",
+        "speak_during_execution": true,
+        "display_position": { "x": 1300, "y": 700 },
+        "instruction": {
+          "type": "static_text",
+          "text": "Thank you so much for your help. Have a great day. Goodbye."
+        }
+      },
+      {
+        "id": "end_wrong_number",
+        "name": "End: Wrong Number",
+        "type": "end",
+        "speak_during_execution": true,
+        "display_position": { "x": 900, "y": 1000 },
+        "instruction": {
+          "type": "static_text",
+          "text": "I'm sorry for the inconvenience. I must have the wrong number. Have a great day. Goodbye."
+        }
+      },
+      {
+        "id": "end_transfer_failed",
+        "name": "End: Transfer Failed",
+        "type": "end",
+        "speak_during_execution": true,
+        "display_position": { "x": 2100, "y": 0 },
+        "instruction": {
+          "type": "static_text",
+          "text": "I'm sorry, I wasn't able to connect you to an agent right now. Someone from Alpha Bank will call you back shortly. Goodbye."
+        }
+      }
+    ],
+    "start_node_id": "greeting",
+    "start_speaker": "agent",
+    "tool_call_strict_mode": true,
+    "knowledge_base_ids": [],
+    "kb_config": {
+      "filter_score": 0.6,
+      "top_k": 3
+    },
+    "begin_tag_display_position": { "x": -100, "y": 400 },
+    "is_published": false,
+    "is_transfer_cf": false
+  }
+}

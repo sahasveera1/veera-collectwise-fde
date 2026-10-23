@@ -5,3 +5,4 @@ data/*.db-journal
 .vercel
 .env
 .DS_Store
+NOTES.md
